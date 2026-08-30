@@ -1,15 +1,15 @@
-module github.com/olezhek28/microservices-course-examples/week_1/workspace/grpc
+module github.com/arlengur/go-micros//workspace/grpc
 
 go 1.24
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/olezhek28/microservices-course-examples/week_1/workspace/shared v0.0.0-00010101000000-000000000000
+	github.com/arlengur/go-micros//workspace/shared v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.72.2
 	google.golang.org/protobuf v1.36.6
 )
 
-replace github.com/olezhek28/microservices-course-examples/week_1/workspace/shared => ../shared
+replace github.com/arlengur/go-micros//workspace/shared => ../shared
 
 require (
 	github.com/google/go-cmp v0.7.0 // indirect

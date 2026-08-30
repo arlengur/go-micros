@@ -1,0 +1,17 @@
+with-expecter: true
+boilerplate-file: ".mockery_boilerplate_text.txt"
+dir: "{{.InterfaceDir}}/mocks"
+filename: "mock_{{.InterfaceNameSnake}}.go"
+outpkg: "mocks"
+mockname: "{{.InterfaceName}}"
+resolve-type-alias: False
+issue-845-fix: True
+
+packages:
+  github.com/arlengur/go-micros/grpc_with_layers_and_tests/internal/service:
+    config:
+      include-regex: ".*Service"
+
+  github.com/arlengur/go-micros/grpc_with_layers_and_tests/internal/repository:
+    config:
+      include-regex: ".*Repository"

@@ -1,10 +1,10 @@
-module github.com/olezhek28/microservices-course-examples/week_1/workspace/http
+module github.com/arlengur/go-micros//workspace/http
 
 go 1.24
 
 require (
 	github.com/go-chi/chi/v5 v5.2.1
-	github.com/olezhek28/microservices-course-examples/week_1/workspace/shared v0.0.0-00010101000000-000000000000
+	github.com/arlengur/go-micros/workspace/shared v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -35,4 +35,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-replace github.com/olezhek28/microservices-course-examples/week_1/workspace/shared => ../shared
+replace github.com/arlengur/go-micros/workspace/shared => ../shared

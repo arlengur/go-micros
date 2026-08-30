@@ -1,0 +1,180 @@
+version: '3'
+
+# Глобальные переменные проекта
+vars:
+  GO_VERSION: '1.24'
+  GOLANGCI_LINT_VERSION: 'v2.1.5'
+  GCI_VERSION: 'v0.13.6'
+  GOFUMPT_VERSION: 'v0.8.0'
+  BUF_VERSION: '1.53.0'
+  PROTOC_GEN_GO_VERSION: 'v1.36.6'
+  PROTOC_GEN_GO_GRPC_VERSION: 'v1.5.1'
+  GRPCURL_VERSION: 'v1.9.3'
+  MOCKERY_VERSION: 'v2.53.3'
+
+  BIN_DIR: '{{.ROOT_DIR}}/bin'
+  GOLANGCI_LINT: '{{.BIN_DIR}}/golangci-lint'
+  GCI: '{{.BIN_DIR}}/gci'
+  GOFUMPT: '{{.BIN_DIR}}/gofumpt'
+  BUF: '{{.BIN_DIR}}/buf'
+  PROTOC_GEN_GO: '{{.BIN_DIR}}/protoc-gen-go'
+  PROTOC_GEN_GO_GRPC: '{{.BIN_DIR}}/protoc-gen-go-grpc'
+  GRPCURL: '{{.BIN_DIR}}/grpcurl'
+  MOCKERY: "{{.BIN_DIR}}/mockery"
+
+  COVERAGE_DIR: '{{.ROOT_DIR}}/coverage'
+
+tasks:
+  install-formatters:
+    desc: "Устанавливает форматтеры gci и gofumpt в ./bin"
+    cmds:
+      - |
+        [ -f {{.GOFUMPT}} ] || {
+          echo '📦 Устанавливаем gofumpt {{.GOFUMPT_VERSION}}...'
+          GOBIN={{.BIN_DIR}} go install mvdan.cc/gofumpt@{{.GOFUMPT_VERSION}}
+        }
+        [ -f {{.GCI}} ] || {
+          echo '📦 Устанавливаем gci {{.GCI_VERSION}}...'
+          GOBIN={{.BIN_DIR}} go install github.com/daixiang0/gci@{{.GCI_VERSION}}
+        }
+    status:
+      - test -x {{.GOFUMPT}}
+      - test -x {{.GCI}}
+
+  format:
+    desc: "Форматирует весь проект gofumpt + gci"
+    deps: [ install-formatters ]
+    cmds:
+      - |
+        echo "🧼 Форматируем через gofumpt ..."
+        find . -type f -name '*.go' ! -path '*/mocks/*' -exec {{.GOFUMPT}} -extra -w {} +
+      - |
+        echo "🎯 Сортируем импорты через gci ..."
+        find . -type f -name '*.go' ! -path '*/mocks/*' -exec {{.GCI}} write -s standard -s default -s "prefix(github.com/arlengur/go-micros/)" {} +
+
+  install-golangci-lint:
+    desc: "Устанавливает golangci-lint в каталог bin"
+    cmds:
+      - |
+        [ -f {{.GOLANGCI_LINT}} ] || {
+          mkdir -p {{.BIN_DIR}}
+          echo "📦 Устанавливаем golangci-lint {{.GOLANGCI_LINT_VERSION}}..."
+          GOBIN={{.BIN_DIR}} go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{.GOLANGCI_LINT_VERSION}}
+        }
+    status:
+      - test -x {{.GOLANGCI_LINT}}
+
+  lint:
+    desc: "Запускает golangci-lint для всех модулей"
+    deps: [ install-golangci-lint ]
+    cmds:
+      - '{{.GOLANGCI_LINT}} run ./... --config=.golangci.yml'
+
+  install-buf:
+    desc: "Устанавливает Buf в каталог bin"
+    cmds:
+      - |
+        mkdir -p {{.BIN_DIR}}
+        [ -f {{.BUF}} ] || {
+          echo '📦 Устанавливаем buf {{.BUF_VERSION}}...'
+          GOBIN={{.BIN_DIR}} go install github.com/bufbuild/buf/cmd/buf@v{{.BUF_VERSION}}
+        }
+    status:
+      - test -x {{.BUF}}
+
+  proto:install-plugins:
+    desc: "Устанавливает protoc плагины в каталог bin"
+    cmds:
+      - |
+        [ -f {{.PROTOC_GEN_GO}} ] || {
+          echo '📦 Installing protoc-gen-go...'
+          GOBIN={{.BIN_DIR}} go install google.golang.org/protobuf/cmd/protoc-gen-go@{{.PROTOC_GEN_GO_VERSION}}
+        }
+        [ -f {{.PROTOC_GEN_GO_GRPC}} ] || {
+          echo '📦 Installing protoc-gen-go-grpc...'
+          GOBIN={{.BIN_DIR}} go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@{{.PROTOC_GEN_GO_GRPC_VERSION}}
+        }
+
+  proto:lint:
+    deps: [ install-buf, proto:install-plugins ]
+    desc: Проверка .proto-файлов на соответствие стилю
+    dir: proto
+    cmds:
+      - '{{.BUF}} lint'
+
+  proto:gen:
+    deps: [ install-buf, proto:install-plugins, proto:lint ]
+    desc: Генерация Go-кода из .proto
+    dir: proto
+    cmds:
+      - '{{.BUF}} generate'
+
+  grpcurl:install:
+    desc: "Устанавливает grpcurl в каталог bin"
+    cmds:
+      - |
+        [ -f {{.GRPCURL}} ] || {
+          echo '📦 Устанавливаем grpcurl {{.GRPCURL_VERSION}}...'
+          GOBIN={{.BIN_DIR}} go install github.com/fullstorydev/grpcurl/cmd/grpcurl@{{.GRPCURL_VERSION}}
+        }
+    status:
+      - test -x {{.GRPCURL}}
+
+  mockery:install:
+    desc: "Устанавливает mockery в ./bin"
+    cmds:
+      - |
+        [ -f {{.MOCKERY}} ] || {
+          echo '📦 Installing mockery...'
+          GOBIN={{.BIN_DIR}} go install github.com/vektra/mockery/v2@{{.MOCKERY_VERSION}}
+        }
+    status:
+      - test -x {{.MOCKERY}}
+
+  mockery:gen:
+    desc: "Генерирует моки интерфейсов с помощью mockery"
+    deps: [ mockery:install ]
+    cmds:
+      - |
+        echo '🧪 Генерация моков...'
+        {{.MOCKERY}}
+
+  test-coverage:
+    desc: "Тесты с покрытием бизнес-логики, автоматический поиск и анализ всех модулей"
+    cmds:
+      - |
+        echo "🧪 Запускаем расчёт покрытия..."
+        rm -rf {{.COVERAGE_DIR}}
+        mkdir -p {{.COVERAGE_DIR}}
+        
+        # Находим все пакеты, для которых нужно измерить покрытие (исключаем mocks)
+        TARGET_PACKAGES=$(go list ./internal/... | grep -v "/mocks" | grep -E '/(api|service)/' | tr '\n' ',')
+        
+        if [ -z "$TARGET_PACKAGES" ]; then
+          echo "⚠️ Не найдено пакетов для тестирования"
+          exit 1
+        fi
+        
+        echo "🧪 Запуск тестов со сбором покрытия для всех модулей..."
+        go test -v -coverprofile={{.COVERAGE_DIR}}/coverage.out -coverpkg=$TARGET_PACKAGES ./...
+        
+        echo "🧾 Общее покрытие:"
+        go tool cover -func={{.COVERAGE_DIR}}/coverage.out | tail -n1
+
+  coverage:html:
+    desc: "Генерирует HTML-отчёт покрытия и открывает его в браузере"
+    deps: [ test-coverage ]
+    cmds:
+      - |
+        OUTPUT={{.COVERAGE_DIR}}/coverage.html
+        echo "🌐 Генерируем HTML-отчёт..."
+        go tool cover -html={{.COVERAGE_DIR}}/coverage.out -o $OUTPUT
+
+        echo "🚀 Открываем $OUTPUT"
+        if command -v open &> /dev/null; then
+          open $OUTPUT  # macOS
+        elif command -v xdg-open &> /dev/null; then
+          xdg-open $OUTPUT  # Linux
+        else
+          echo "📂 Отчёт сохранён в $OUTPUT (открой вручную)"
+        fi

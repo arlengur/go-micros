@@ -1,4 +1,4 @@
-module github.com/olezhek28/microservices-course-examples/week_1/workspace/shared
+module github.com/arlengur/go-micros/workspace/shared
 
 go 1.24
 
